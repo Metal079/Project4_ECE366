@@ -1,10 +1,11 @@
 from __future__ import print_function
+import sys
 import os
+import math
 
 
 def main():
-    mode = int(input(
-        "Select from the following, \n1) Processor Simulation of MC,\n2) Processor Simulation of AP, \n3) DataCache simulation of CacheSim. "))
+    mode = int(input("Select from the following, \n1) Processor Simulation of MC,\n2) Processor Simulation of AP, \n3) DataCache simulation of CacheSim. "))
     diagnosis_mode = input("Press a for diagnosis mode, press b for non-stop mode. ")
 
     file = open("mips.asm", 'r')  # Opens the file
@@ -13,22 +14,18 @@ def main():
     program = []
 
     labelLocations = {}
-    saveJumpLabel(asm, labelLocations)
+
 
     for line in asm:  # For every line in the asm file
-        if line.count('#'):
-            line = list(line)
-            line[line.index('#'):-1] = ''
-            line = ''.join(line)
+        #if line.count('#'):
+            #line = list(line)
+           # line[line.index('#'):-1] = ''
+            #line = ''.join(line)
 
         if line.count(':'):
             line = "\n"
-            # line = list(line)
-            # for char in line:
-            # char =  ''
-            # line[line.index(':'):-1] = ''
-        # line = ''.join(line)
-
+        if line[0] == '#':
+            line = '\n'
         # Removes empty lines from the file
         if line[0] == '\n':
             continue
@@ -40,14 +37,155 @@ def main():
         program.append('0')
         program.append('0')
 
+    saveJumpLabel(asm, labelLocations)
+
     # We SHALL start the simulation!
     # machineCode = machineTranslation(program) # Translates the english assembly code to machine code
     if mode == 1 or mode == 2:
-        sim(program, diagnosis_mode,
-            labelLocations)  # Starts the assembly simulation with the assembly program machine code as # FUNCTION: read input file
+        sim(program, diagnosis_mode, labelLocations, 1)  # Starts the assembly simulation with the assembly program machine code as # FUNCTION: read input file
 
+    if mode == 3:
+        sim(program, diagnosis_mode, labelLocations, 3)
 
-def sim(program, diagnosis_mode, labelLocations):
+def binary(d):
+    if(d.islower()):
+        d = ord(d) - 87
+    else:
+        d = int(d)
+    n = int(str(d), 16)
+    bStr = ''
+    while d > 0:
+        bStr = str(d % 2) + bStr
+        d = d >> 1
+    res = bStr
+    while(len(res) < 4):
+        res = "0" + res
+    return res
+
+def tag(address, b, n, s, hitArr, numHit, numMiss, base):
+    b = str(b)
+    i = 0
+    k = False
+    block = ""
+    while(i < len(b)):
+        if((b[i] == 'K') or (b[i]) == 'k'):
+            k = True
+        if((b[i].isupper()) or (b[i].islower())):
+            block = block
+        else:
+            block = block + b[i]
+        i = i + 1
+    if(k == True):
+        block = int(block) * 1000
+    else:
+        block = int(block)
+    set = math.ceil(math.log(block, 2))
+    if(int(n) != 0):
+        os = int(s) / int(n)
+    else:
+        os = int(s)
+    offset = math.ceil(math.log(os, 2))
+    tag = 32 - (set + offset)
+    print("# of tag bits:")
+    print(tag)
+    print("# of valid bits:")
+    print(tag + set)
+    return hit(address, tag, set, offset, hitArr, n, numHit, numMiss, base)
+
+def hit(address, tag, set, offset, hitArr, numWays, numhit, numMiss, base):
+    i = 0
+    j = 0
+    j = int(j)
+    spot = 0
+    tagS = ""
+    while i < tag:
+        tagS = tagS + address[i]
+        i = i + 1
+    #print(tagS)
+    #hitArr = [""] * 203
+    while(hitArr[j] != tagS):
+        if(hitArr[j] == ""):
+            hitArr[j] = tagS
+            spot = j
+            #print(tagS + " at")
+            #print(j)
+        if(hitArr[j] == tagS):
+            break
+        j = j + 1
+    #print(hitArr)
+    return miss(hitArr, tagS, numWays, spot, address, base, numhit, numMiss)
+
+def miss(hitArr, tagS, numWays, spot, address, base, numHit, numMiss):
+    i = spot
+    way = numWays
+    if(int(way) == 0):
+        way = 1
+
+    #print(hitArr[int(spot) - int(way)])
+    #print(tagS)
+    #print(spot)
+    #print(way)
+    if(hitArr[int(spot) - int(way)] == tagS):
+        print("Hit at " + tagS)
+        numHit = numHit + 1
+        #print(numHit)
+    else:
+        print("miss at " + tagS + ", memory address: " + base + " was accessed")
+        numMiss = numMiss + 1
+        #print(numMiss)
+    resultArr = [""] * 6
+    #resultArr[0] = hitArr
+    #print("result")
+    resultArr[0] = tagS
+    resultArr[1] = numWays
+    resultArr[2] = spot
+    resultArr[3] = numHit
+    resultArr[4] = numMiss
+    resultArr[5] = hitArr
+    #print(resultArr[0])
+    return resultArr
+
+def hitTag(hitArr, tagS, numWays, spot, numHit):
+    i = spot
+    way = numWays
+    if(int(way) == 0):
+        way = 1
+    if(hitArr[int(spot) - int(way)] == tagS):
+        print("Hit at " + tagS)
+        numHit = numHit + 1
+        #print(numHit)
+    return numHit
+
+def cache(address, b, n, s, hitArr, numHit, numMiss):
+    address = hex(address)
+    base = address
+    address = str(address)
+    d1 = address[5] #1's place digit
+    d2 = address[4] #10's place digit
+    d3 = address[3] #100's place digit
+    d4 = address[2] #1000's place digit
+    b1 = binary(d1)
+    b2 = binary(d2)
+    b3 = binary(d3)
+    b4 = binary(d4)
+    #print(base)
+    #print(b4 + " " + b3 + " " + b2 + " " + b1)
+    result = b4 + b3 + b2 + b1
+    print("memory address in binary:")
+    print(result)
+    return tag(result, b, n, s, hitArr, numHit, numMiss, base)
+
+def sim(program, diagnosis_mode, labelLocations, mode):
+    masterRN = 0
+    numHit = 0
+    numMiss = 0
+    hitArr = [""] * 203
+    resultArr = [""] * 6
+    if(mode == 3):
+        blockSize = input("Please input the block size b (# of bytes) ")
+        nWays = input("Please input the # of ways N ")
+        nSets = input("Please input the # of sets S ")
+
     stage = {}
     three_cycle_instructions = 0
     four_cycle_instructions = 0
@@ -56,7 +194,6 @@ def sim(program, diagnosis_mode, labelLocations):
     # Control Signals
     rows, columns = (1, 11)
     arr = [[""] * columns] * rows
-    # print(arr)
     arr[0][0] = "Instruction"
     arr[0][1] = "RegDst"
     arr[0][2] = "ALUSrc"
@@ -76,7 +213,6 @@ def sim(program, diagnosis_mode, labelLocations):
     # But my machine has 16GB of RAM, its ok :)
     DIC = 0  # Dynamic Instr Count
 
-    #print("start")
     while (not (finished)):
         instruction = ""
         instrDescription = ""
@@ -131,16 +267,19 @@ def sim(program, diagnosis_mode, labelLocations):
                 ry = int(fetch[
                          register_start_location + 1:comma_location])  # This is the register that will added by immediate
 
-                #print("fetch")
-                #print(fetch[comma_location + 3])
-                if(fetch[comma_location + 3] == 'x'):
-                    imm = int(fetch[comma_location + 4:])  # Reads the immediate
-                else:
+                try:
+                    if(fetch[comma_location + 3] == 'x'):
+                        imm = int(fetch[comma_location + 1:], 16)  # Reads the immediate
+                    else:
+                        imm = int(fetch[comma_location + 1:])
+                except:
                     imm = int(fetch[comma_location + 1:])
+
                 register[rx] = register[ry] + imm
                 PC += 4
 
                 if register[rx] > 2147483647:  # Overflow support
+                    quit()
                     register[rx] = register[rx] - (2147483647 * 2) - 1
 
         if fetch[0:4] == 'addu' or "addu" in stage:  # Reads the Opcode
@@ -186,6 +325,10 @@ def sim(program, diagnosis_mode, labelLocations):
                 # comma_location = fetch.find(',', comma_location + 1)
                 rz = int(fetch[register_start_location + 1:])  # This is a register that will be added
                 register[rx] = register[ry] + register[rz]
+                if register[rx] > 2147483647:
+                    register[rx] -= 2147483648 + 2147483648
+                elif register[rx] < -2147483648:
+                    register[rx] += 2147483648 + 2147483648
                 PC += 4
 
         if fetch[0:3] == 'ori' or 'ori' in stage:
@@ -264,23 +407,30 @@ def sim(program, diagnosis_mode, labelLocations):
                 # These next two lines find the space where the rx register is.
                 register_start_location = fetch.find('$')
                 comma_location = fetch.find(',')
-                rx = int(
-                    fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+                rx = int(fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+
+                offset = int(fetch[comma_location + 1:comma_location + 8], 16)  # Reads the immediate
 
                 register_start_location = fetch.find('$', register_start_location + 1)
-                comma_location = fetch.find(',', comma_location + 1)
-                ry = int(fetch[
-                         register_start_location + 1:comma_location])  # This is the register that will added by immediate
+                parenthesis_end_location = fetch.find(')')
+                ry = int(fetch[register_start_location + 1:parenthesis_end_location])
 
-                #print("fetch")
-                #print(fetch[comma_location + 9])
-                #print("last fetch")
-                if(fetch[comma_location + 9] == 'x'):
-                    imm = int(fetch[comma_location + 10:comma_location + 14])  # Reads the immediate
-                else:
-                    imm = int(fetch[comma_location + 1:])
-                mem[register[ry] + imm] = register[rx]
+                mem[register[ry] + offset] = register[rx]
                 PC += 4
+
+                rp = register[ry] + offset
+
+                if(mode == 3):
+                    #resultArr[0] = tagS
+                    #resultArr[1] = numWays
+                    #resultArr[2] = spot
+                    #resultArr[3] = numHit
+                    #resultArr[4] = numMiss
+                    #resultArr[5] = hitArr
+                    masterRN = rp
+                    resultArr = cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                    numMiss = numMiss + resultArr[4]
+                    numHit = numHit + hitTag(resultArr[5], resultArr[0], resultArr[1], resultArr[2], resultArr[3])
 
         if fetch[0:3] == 'beq' or 'beq' in stage:
             instruction_name = 'beq'
@@ -356,8 +506,7 @@ def sim(program, diagnosis_mode, labelLocations):
                 # These next two lines find the space where the rx register is.
                 register_start_location = fetch.find('$')
                 comma_location = fetch.find(',')
-                rx = int(
-                    fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+                rx = int(fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
 
                 register_start_location = fetch.find('$', register_start_location + 1)
                 comma_location = fetch.find(',', comma_location + 1)
@@ -369,6 +518,7 @@ def sim(program, diagnosis_mode, labelLocations):
                     PC = (labelLocations[label] * 4)
                 else:
                     PC += 4
+                pass
 
         if fetch[0:3] == 'sub' or 'sub' in stage:
             instruction_name = "sub"
@@ -402,8 +552,7 @@ def sim(program, diagnosis_mode, labelLocations):
                 # These next two lines find the space where the rx register is.
                 register_start_location = fetch.find('$')
                 comma_location = fetch.find(',')
-                rx = int(
-                    fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+                rx = int(fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
 
                 register_start_location = fetch.find('$', register_start_location + 1)
                 comma_location = fetch.find(',', comma_location + 1)
@@ -413,6 +562,8 @@ def sim(program, diagnosis_mode, labelLocations):
                 # comma_location = fetch.find(',', comma_location + 1)
                 rz = int(fetch[register_start_location + 1:])  # This is a register that will be added
                 register[rx] = register[ry] - register[rz]
+                if register[rx] < -2147483648:
+                    register[rx] += 2147483648 + 2147483647
                 PC += 4
 
         if fetch[0:2] == 'lw' or 'lw' in stage:
@@ -449,17 +600,25 @@ def sim(program, diagnosis_mode, labelLocations):
                 # These next two lines find the space where the rx register is.
                 register_start_location = fetch.find('$')
                 comma_location = fetch.find(',')
-                rx = int(
-                    fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+                rx = int(fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+
+                offset = int(fetch[comma_location + 1:comma_location + 8], 16)  # Reads the immediate
 
                 register_start_location = fetch.find('$', register_start_location + 1)
-                comma_location = fetch.find(',', comma_location + 1)
-                ry = int(fetch[
-                         register_start_location + 1:comma_location])  # This is the register that will added by immediate
+                parenthesis_end_location = fetch.find(')')
+                ry = int(fetch[register_start_location + 1:parenthesis_end_location])
 
-                imm = int(fetch[comma_location + 1:])  # Reads the immediate
-                register[rx] = mem[register[ry] + imm]
+                register[rx] = mem[register[ry] + offset]
                 PC += 4
+
+                rp = register[ry] + offset
+
+                if(mode == 3):
+                    masterRN = rp
+                    resultArr = cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                    numMiss = numMiss + resultArr[4]
+                    numHit = numHit + hitTag(resultArr[5], resultArr[0], resultArr[1], resultArr[2], resultArr[3])
+
 
         if fetch[0:3] == 'xor' or 'xor' in stage:
             instruction_name = 'xor'
@@ -498,8 +657,7 @@ def sim(program, diagnosis_mode, labelLocations):
 
                 register_start_location = fetch.find('$', register_start_location + 1)
                 comma_location = fetch.find(',', comma_location + 1)
-                ry = int(fetch[
-                         register_start_location + 1:comma_location])  # This is the register that will added by immediate
+                ry = int(fetch[register_start_location + 1:comma_location])  # This is the register that will added by immediate
 
                 register_start_location = fetch.find('$', register_start_location + 1)
                 rz = int(fetch[register_start_location + 1:])  # This is a register that will be added
@@ -547,26 +705,41 @@ def sim(program, diagnosis_mode, labelLocations):
                          register_start_location + 1:comma_location])  # This is the register that will added by immediate
 
                 imm = int(fetch[comma_location + 1:])  # Reads the immediate
-                register[rx] = register[ry] << imm
+
+                register[rx] = register[ry] << 1
+                while imm > 1:
+                    count = 1
+                    register[rx] = register[rx] << count
+                    imm -= 1
+                binary = bin(register[rx])
+                hexi = hex(register[rx])
+                if (register[rx] > 2147483647 and (str(binary[0] != '-') and str(binary[2] != '1'))):  # Overflow support
+                    test = str(binary)[-32:]
+                    register[rx] = int(test, 2)
+                elif register[rx] < -2147483648 or (register[rx] > 2147483647 and str(binary[0] == '-')):
+                    negative = '-'
+                    binary = str(binary)[-32:]
+                    binary = negative + binary
+                    register[rx] = int(binary, 2)
                 PC += 4
 
-        if fetch[0:4] == 'slt' or "slt" in stage:  # Reads the Opcode
+        if fetch[0:3] == 'slt' or "slt" in stage:  # Reads the Opcode
             instruction_name = "slt"
             four_cycle_instructions += 1
 
             sltArr = [[""] * columns] * rows
-            sltArr[0][0] = "sw"  # "Instruction"
+            sltArr[0][0] = "slt"  # "Instruction"
             sltArr[0][1] = "       1"  # "RegDst"
-            swArr[0][2] = "       1"  # "ALUSrc"
-            swArr[0][3] = "       0"  # "MemtoReg"
-            swArr[0][4] = "       1"  # "RegWrite"
-            swArr[0][5] = "       0"  # "MemRead"
-            swArr[0][6] = "       0"  # "MemWrite"
-            swArr[0][7] = "       0"  # "Branch"
-            swArr[0][8] = "   0"  # "Jump"
-            swArr[0][9] = "101011"  # "ALUOp"
-            swArr[0][10] = "  4"  # "Cycle"
-            curArr = swArr
+            sltArr[0][2] = "       1"  # "ALUSrc"
+            sltArr[0][3] = "       0"  # "MemtoReg"
+            sltArr[0][4] = "       1"  # "RegWrite"
+            sltArr[0][5] = "       0"  # "MemRead"
+            sltArr[0][6] = "       0"  # "MemWrite"
+            sltArr[0][7] = "       0"  # "Branch"
+            sltArr[0][8] = "   0"  # "Jump"
+            sltArr[0][9] = "101011"  # "ALUOp"
+            sltArr[0][10] = "  4"  # "Cycle"
+            curArr =sltArr
 
             # Below code decides the multi-cycle stage of the instruction
             if "slt" not in stage:
@@ -582,8 +755,7 @@ def sim(program, diagnosis_mode, labelLocations):
                 # These next two lines find the space where the rx register is.
                 register_start_location = fetch.find('$')
                 comma_location = fetch.find(',')
-                rx = int(
-                    fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+                rx = int(fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
 
                 register_start_location = fetch.find('$', register_start_location + 1)
                 comma_location = fetch.find(',', comma_location + 1)
@@ -592,7 +764,7 @@ def sim(program, diagnosis_mode, labelLocations):
                 register_start_location = fetch.find('$', register_start_location + 1)
                 # comma_location = fetch.find(',', comma_location + 1)
                 rz = int(fetch[register_start_location + 1:])  # This is a register that will be added
-                if register[ry] > register[rz]:
+                if register[ry] < register[rz]:
                     register[rx] = 1
                 else:
                     register[rx] = 0
@@ -606,16 +778,27 @@ def sim(program, diagnosis_mode, labelLocations):
             print("Instruction is currently in the " + stage[instruction_name] + " stage of it's execution")
             print(arr)
             print(curArr)
+            # resultArr[0] = tagS
+            # resultArr[1] = numWays
+            # resultArr[2] = spot
+            # resultArr[3] = numHit
+            # resultArr[4] = numMiss
+            # resultArr[5] = hitArr
+            if(instruction == "sw" or instruction == "lw"):
+                cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+            printInfo(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
+                      four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
             input()
 
         end_instruction(stage)
+
     #print("bye")
     # Finished simulations. Let's print out some stats
     print('***Simulation finished***\n')
-    printInfo(register, DIC, mem[0:259], PC, instruction, instrDescription, three_cycle_instructions,
-              four_cycle_instructions, five_cycle_instructions)
+    printInfo(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
+              four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
 
-def printInfo(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total):
+def printInfo(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr):
     num = int(_PC / 4)
     # print('******* Instruction Number ' + str(num) + '. ' + instr + ' : *********\n')
     print(str(three_cycle_total / 3) + " instructions take 3 cycles to complete")
@@ -625,7 +808,11 @@ def printInfo(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, fo
     print("\nCPI: " + str(three_cycle_total + four_cycle_total + five_cycle_total / int(_DIC)))
     print('\nPC = ', _PC)
     print('\nRegisters $0- $31 \n', _register)
-    print('\nMemory contents 0xff - 0x64 ', _mem)
+    print('\nMemory contents 0x2000 - 0x21fc ', _mem)
+    #cache(masterRN, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+    if(numHit + numMiss != 0):
+        hr = numHit / (numHit + numMiss)
+        print("Overall hit rate ", hr)
     print('\nPress enter to continue.......')
     #input()
 
@@ -681,6 +868,11 @@ def end_instruction(stage):
             stage.pop("sll")
     except:
         pass
+    try:
+        if stage["slt"] == 'writeback':
+            stage.pop("slt")
+    except:
+        pass
 
 
 # Remember where each of the jump label is, and the target location
@@ -688,16 +880,21 @@ def saveJumpLabel(asm, labelLocations):
     lineCount = 0
     for line in asm:
         line = line.replace(" ", "")
-        if (line.count(":")):
+        if line[0] == '#':
+            line = '\n'
+            lineCount -= 1
+        elif (line.count(":")):
             labelLocations[str(line[0:line.index(":")])] = lineCount
-            # labelName.append(line[0:line.index(":")])  # append the label name
-            # labelIndex.append(lineCount)  # append the label's index
-            # asm[lineCount] = line[line.index(":")+1:] #Dont include labels in linecount
+            lineCount -= 1
         lineCount += 1
     for item in range(asm.count('\n')):  # Remove all empty lines '\n'
         asm.remove('\n')
     print(str(lineCount))
 
+def twos(val_str, bytes):
+    val = int(val_str, 2)
+    b = val.to_bytes(bytes, byteorder=sys.byteorder, signed=False)
+    return int.from_bytes(b, byteorder=sys.byteorder, signed=True)
 
 if __name__ == "__main__":
     main()
