@@ -17,7 +17,7 @@ def main():
         print('Error! Please enter either "a" or "b"')
         quit()
 
-    file = open("asm.txt", 'r')  # Opens the file
+    file = open("mips.asm", 'r')  # Opens the file
     asm = file.readlines()  # Gets a list of every line in file
 
     program = []
@@ -218,7 +218,7 @@ def sim(program, diagnosis_mode, labelLocations, mode):
     mem = [0] * 12288  # Let's initialize 0x3000 or 12288 spaces in memory. I know this is inefficient...
     # But my machine has 16GB of RAM, its ok :)
     DIC = 0  # Dynamic Instr Count
-    cycles  = 0
+    cycles = 0
 
     while (not (finished)):
         instruction = ""
@@ -787,16 +787,12 @@ def sim(program, diagnosis_mode, labelLocations, mode):
                 print("Instruction is currently in the " + stage[instruction_name] + " stage of it's execution")
                 print(arr)
                 print(curArr)
-                # resultArr[0] = tagS
-                # resultArr[1] = numWays
-                # resultArr[2] = spot
-                # resultArr[3] = numHit
-                # resultArr[4] = numMiss
-                # resultArr[5] = hitArr
-            if(instruction == "sw" or instruction == "lw" and mode == 3):
-                cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
-                printInfoCache(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr, cycles)
-            input()
+                input()
+            if(instruction_name == "sw" or instruction_name == "lw"):
+                #cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                printInfoCache(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
+                      four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
+                input()
 
         end_instruction_multi_cycle(stage)
 
@@ -805,11 +801,12 @@ def sim(program, diagnosis_mode, labelLocations, mode):
     print('***Simulation finished***\n')
     if mode == 1:
         printInfoMC(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
-                    four_cycle_instructions, five_cycle_instructions, cycles)
+                    four_cycle_instructions, five_cycle_instructions)
 
     if mode == 3:
         printInfoCache(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
-              four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr, cycles)
+              four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
+
 
 
 def pipelinedCPU(program, diagnosis_mode, labelLocations):
@@ -1512,12 +1509,11 @@ def pipelinedCPU(program, diagnosis_mode, labelLocations):
                 four_cycle_instructions, five_cycle_instructions, cycles)
 
 
-def printInfoMC(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total, cycles):
+def printInfoMC(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total):
     num = int(_PC / 4)
     print(str(three_cycle_total / 3) + " instructions take 3 cycles to complete")
     print(str(four_cycle_total / 4) + " instructions take 4 cycles to complete")
     print(str(five_cycle_total / 5) + " instructions take 5 cycles to complete")
-    print('\nCycles: ', cycles)
     print('\nDynamic Instr Count: ', _DIC)
     print("\nCPI: " + str((three_cycle_total + four_cycle_total + five_cycle_total) / int(_DIC)))
     print('\nPC = ', _PC)
@@ -1540,13 +1536,12 @@ def printInfoAP(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, 
     print('\nPress enter to continue.......')
 
 
-def printInfoCache(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr, cycles):
+def printInfoCache(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr):
     num = int(_PC / 4)
     # print('******* Instruction Number ' + str(num) + '. ' + instr + ' : *********\n')
     print(str(three_cycle_total / 3) + " instructions take 3 cycles to complete")
     print(str(four_cycle_total / 4) + " instructions take 4 cycles to complete")
     print(str(five_cycle_total / 5) + " instructions take 5 cycles to complete")
-    print('\nCycles: ', cycles)
     print('\nDynamic Instr Count: ', _DIC)
     print("\nCPI: " + str(three_cycle_total + four_cycle_total + five_cycle_total / int(_DIC)))
     print('\nPC = ', _PC)
