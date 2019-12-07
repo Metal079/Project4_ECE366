@@ -17,7 +17,7 @@ def main():
         print('Error! Please enter either "a" or "b"')
         quit()
 
-    file = open("mips.asm", 'r')  # Opens the file
+    file = open("asm.txt", 'r')  # Opens the file
     asm = file.readlines()  # Gets a list of every line in file
 
     program = []
@@ -808,7 +808,6 @@ def sim(program, diagnosis_mode, labelLocations, mode):
     if mode == 3:
         printInfoCache(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
               four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
-
 
 
 def pipelinedCPU(program, diagnosis_mode, labelLocations):
