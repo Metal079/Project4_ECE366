@@ -428,17 +428,17 @@ def sim(program, diagnosis_mode, labelLocations, mode):
 
                 rp = register[ry] + offset
 
-                if(mode == 3):
+                #if(mode == 3):
                     #resultArr[0] = tagS
                     #resultArr[1] = numWays
                     #resultArr[2] = spot
                     #resultArr[3] = numHit
                     #resultArr[4] = numMiss
                     #resultArr[5] = hitArr
-                    masterRN = rp
-                    resultArr = cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
-                    numMiss = numMiss + resultArr[4]
-                    numHit = numHit + hitTag(resultArr[5], resultArr[0], resultArr[1], resultArr[2], resultArr[3])
+                masterRN = rp
+                resultArr = cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                numMiss = numMiss + resultArr[4]
+                numHit = numHit + hitTag(resultArr[5], resultArr[0], resultArr[1], resultArr[2], resultArr[3])
 
         if fetch[0:3] == 'beq' or 'beq' in stage:
             instruction_name = 'beq'
@@ -787,8 +787,14 @@ def sim(program, diagnosis_mode, labelLocations, mode):
             print(arr)
             print(curArr)
             input()
+            #if mode == 3:
             if(instruction_name == "sw" or instruction_name == "lw"):
-                cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                try:
+                    rp
+                except:
+                    print("")
+                else:
+                    cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
             printInfoCache(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
                 four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
             input()
