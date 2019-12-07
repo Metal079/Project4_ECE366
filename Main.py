@@ -1,7 +1,7 @@
 from __future__ import print_function
 import sys
 import os
-from copy import deepcopy
+import math
 
 
 def main():
@@ -43,12 +43,154 @@ def main():
     # We SHALL start the simulation!
     # machineCode = machineTranslation(program) # Translates the english assembly code to machine code
     if mode == 1:
-        multiCycleCPU(program, diagnosis_mode, labelLocations)  # Starts the assembly simulation with the assembly program machine code as # FUNCTION: read input file
+        sim(program, diagnosis_mode, labelLocations, 1)  # Starts the assembly simulation with the assembly program machine code as # FUNCTION: read input file
     elif mode == 2:
         pipelinedCPU(program, diagnosis_mode, labelLocations)
+    elif mode == 3:
+        sim(program, diagnosis_mode, labelLocations, 3)
 
+def binary(d):
+    if(d.islower()):
+        d = ord(d) - 87
+    else:
+        d = int(d)
+    n = int(str(d), 16)
+    bStr = ''
+    while d > 0:
+        bStr = str(d % 2) + bStr
+        d = d >> 1
+    res = bStr
+    while(len(res) < 4):
+        res = "0" + res
+    return res
 
-def multiCycleCPU(program, diagnosis_mode, labelLocations):
+def tag(address, b, n, s, hitArr, numHit, numMiss, base):
+    b = str(b)
+    i = 0
+    k = False
+    block = ""
+    while(i < len(b)):
+        if((b[i] == 'K') or (b[i]) == 'k'):
+            k = True
+        if((b[i].isupper()) or (b[i].islower())):
+            block = block
+        else:
+            block = block + b[i]
+        i = i + 1
+    if(k == True):
+        block = int(block) * 1000
+    else:
+        block = int(block)
+    set = math.ceil(math.log(block, 2))
+    if(int(n) != 0 and int(s) > int(n)):
+        os = int(s) / int(n)
+    else:
+        os = int(s)
+    offset = math.ceil(math.log(os, 2))
+    #print("set")
+    #print(set)
+    #print("offset")
+    #print(offset)
+    tag = 32 - (set + offset)
+    print("# of tag bits:")
+    print(tag)
+    print("# of valid bits:")
+    print(tag + set)
+    return hit(address, tag, set, offset, hitArr, n, numHit, numMiss, base)
+
+def hit(address, tag, set, offset, hitArr, numWays, numhit, numMiss, base):
+    i = 0
+    j = 0
+    j = int(j)
+    spot = 0
+    tagS = ""
+    while (i < tag and i < len(address)):
+        tagS = tagS + address[i]
+        i = i + 1
+    #print(tagS)
+    #hitArr = [""] * 203
+    while(hitArr[j] != tagS):
+        if(hitArr[j] == ""):
+            hitArr[j] = tagS
+            spot = j
+            #print(tagS + " at")
+            #print(j)
+        if(hitArr[j] == tagS):
+            break
+        j = j + 1
+    #print(hitArr)
+    return miss(hitArr, tagS, numWays, spot, address, base, numhit, numMiss)
+
+def miss(hitArr, tagS, numWays, spot, address, base, numHit, numMiss):
+    i = spot
+    way = numWays
+    if(int(way) == 0):
+        way = 1
+
+    #print(hitArr[int(spot) - int(way)])
+    #print(tagS)
+    #print(spot)
+    #print(way)
+    if(hitArr[int(spot) - int(way)] == tagS):
+        print("Hit at " + tagS)
+        numHit = numHit + 1
+        #print(numHit)
+    else:
+        print("miss at " + tagS + ", memory address: " + base + " was accessed")
+        numMiss = numMiss + 1
+        #print(numMiss)
+    resultArr = [""] * 6
+    #resultArr[0] = hitArr
+    #print("result")
+    resultArr[0] = tagS
+    resultArr[1] = numWays
+    resultArr[2] = spot
+    resultArr[3] = numHit
+    resultArr[4] = numMiss
+    resultArr[5] = hitArr
+    #print(resultArr[0])
+    return resultArr
+
+def hitTag(hitArr, tagS, numWays, spot, numHit):
+    i = spot
+    way = numWays
+    if(int(way) == 0):
+        way = 1
+    if(hitArr[int(spot) - int(way)] == tagS):
+        print("Hit at " + tagS)
+        numHit = numHit + 1
+        #print(numHit)
+    return numHit
+
+def cache(address, b, n, s, hitArr, numHit, numMiss):
+    address = hex(address)
+    base = address
+    address = str(address)
+    d1 = address[5] #1's place digit
+    d2 = address[4] #10's place digit
+    d3 = address[3] #100's place digit
+    d4 = address[2] #1000's place digit
+    b1 = binary(d1)
+    b2 = binary(d2)
+    b3 = binary(d3)
+    b4 = binary(d4)
+    #print(base)
+    #print(b4 + " " + b3 + " " + b2 + " " + b1)
+    result = b4 + b3 + b2 + b1
+    print("memory address in binary:")
+    print(result)
+    return tag(result, b, n, s, hitArr, numHit, numMiss, base)
+
+def sim(program, diagnosis_mode, labelLocations, mode):
+    masterRN = 0
+    numHit = 0
+    numMiss = 0
+    hitArr = [""] * 203
+    resultArr = [""] * 6
+    if(mode == 3):
+        blockSize = input("Please input the block size b (# of bytes) ")
+        nWays = input("Please input the # of ways N ")
+        nSets = input("Please input the # of sets S ")
 
     stage = {}
     three_cycle_instructions = 0
@@ -88,6 +230,7 @@ def multiCycleCPU(program, diagnosis_mode, labelLocations):
             fetch = program[PC]
         except:
             break
+        DIC += 1
 
         # HERES WHERE THE INSTRUCTIONS GO!
         if fetch[0:4] == 'addi' or "addi" in stage:  # Reads the Opcode
@@ -122,11 +265,13 @@ def multiCycleCPU(program, diagnosis_mode, labelLocations):
             if stage["addi"] == "writeback":
                 register_start_location = fetch.find('$')
                 comma_location = fetch.find(',')
-                rx = int(fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
+                rx = int(
+                    fetch[register_start_location + 1:comma_location])  # This is the register where the result will be
 
                 register_start_location = fetch.find('$', register_start_location + 1)
                 comma_location = fetch.find(',', comma_location + 1)
-                ry = int(fetch[register_start_location + 1:comma_location])  # This is the register that will added by immediate
+                ry = int(fetch[
+                         register_start_location + 1:comma_location])  # This is the register that will added by immediate
 
                 try:
                     if(fetch[comma_location + 3] == 'x'):
@@ -278,6 +423,20 @@ def multiCycleCPU(program, diagnosis_mode, labelLocations):
 
                 mem[register[ry] + offset] = register[rx]
                 PC += 4
+
+                rp = register[ry] + offset
+
+                if(mode == 3):
+                    #resultArr[0] = tagS
+                    #resultArr[1] = numWays
+                    #resultArr[2] = spot
+                    #resultArr[3] = numHit
+                    #resultArr[4] = numMiss
+                    #resultArr[5] = hitArr
+                    masterRN = rp
+                    resultArr = cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                    numMiss = numMiss + resultArr[4]
+                    numHit = numHit + hitTag(resultArr[5], resultArr[0], resultArr[1], resultArr[2], resultArr[3])
 
         if fetch[0:3] == 'beq' or 'beq' in stage:
             instruction_name = 'beq'
@@ -458,6 +617,15 @@ def multiCycleCPU(program, diagnosis_mode, labelLocations):
                 register[rx] = mem[register[ry] + offset]
                 PC += 4
 
+                rp = register[ry] + offset
+
+                if(mode == 3):
+                    masterRN = rp
+                    resultArr = cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+                    numMiss = numMiss + resultArr[4]
+                    numHit = numHit + hitTag(resultArr[5], resultArr[0], resultArr[1], resultArr[2], resultArr[3])
+
+
         if fetch[0:3] == 'xor' or 'xor' in stage:
             instruction_name = 'xor'
             four_cycle_instructions += 1
@@ -568,16 +736,16 @@ def multiCycleCPU(program, diagnosis_mode, labelLocations):
             sltArr = [[""] * columns] * rows
             sltArr[0][0] = "slt"  # "Instruction"
             sltArr[0][1] = "       1"  # "RegDst"
-            swArr[0][2] = "       1"  # "ALUSrc"
-            swArr[0][3] = "       0"  # "MemtoReg"
-            swArr[0][4] = "       1"  # "RegWrite"
-            swArr[0][5] = "       0"  # "MemRead"
-            swArr[0][6] = "       0"  # "MemWrite"
-            swArr[0][7] = "       0"  # "Branch"
-            swArr[0][8] = "   0"  # "Jump"
-            swArr[0][9] = "101011"  # "ALUOp"
-            swArr[0][10] = "  4"  # "Cycle"
-            curArr = swArr
+            sltArr[0][2] = "       1"  # "ALUSrc"
+            sltArr[0][3] = "       0"  # "MemtoReg"
+            sltArr[0][4] = "       1"  # "RegWrite"
+            sltArr[0][5] = "       0"  # "MemRead"
+            sltArr[0][6] = "       0"  # "MemWrite"
+            sltArr[0][7] = "       0"  # "Branch"
+            sltArr[0][8] = "   0"  # "Jump"
+            sltArr[0][9] = "101011"  # "ALUOp"
+            sltArr[0][10] = "  4"  # "Cycle"
+            curArr =sltArr
 
             # Below code decides the multi-cycle stage of the instruction
             if "slt" not in stage:
@@ -616,16 +784,31 @@ def multiCycleCPU(program, diagnosis_mode, labelLocations):
             print("Instruction is currently in the " + stage[instruction_name] + " stage of it's execution")
             print(arr)
             print(curArr)
+            # resultArr[0] = tagS
+            # resultArr[1] = numWays
+            # resultArr[2] = spot
+            # resultArr[3] = numHit
+            # resultArr[4] = numMiss
+            # resultArr[5] = hitArr
+            if(instruction == "sw" or instruction == "lw"):
+                cache(rp, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+            printInfo(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
+                      four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
             input()
 
-        try:
-            DIC += end_instruction_multi_cycle(stage)
-        except:
-            pass
+        end_instruction_multi_cycle(stage)
+
+    #print("bye")
     # Finished simulations. Let's print out some stats
     print('***Simulation finished***\n')
-    printInfoMC(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
-                four_cycle_instructions, five_cycle_instructions)
+    if mode == 1:
+        printInfoMC(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
+                    four_cycle_instructions, five_cycle_instructions)
+
+    if mode == 3:
+        printInfoCache(register, DIC, mem[8192:8704], PC, instruction, instrDescription, three_cycle_instructions,
+              four_cycle_instructions, five_cycle_instructions, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr)
+
 
 
 def pipelinedCPU(program, diagnosis_mode, labelLocations):
@@ -1353,6 +1536,25 @@ def printInfoAP(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, 
     print('\nRegisters $0- $31 \n', _register)
     print('\nMemory contents 0x2000 - 0x21fc ', _mem)
     print('\nPress enter to continue.......')
+
+
+def printInfoCache(_register, _DIC, _mem, _PC, instr, instrDes, three_cycle_total, four_cycle_total, five_cycle_total, numHit, numMiss, masterRN, blockSize, nWays, nSets, hitArr):
+    num = int(_PC / 4)
+    # print('******* Instruction Number ' + str(num) + '. ' + instr + ' : *********\n')
+    print(str(three_cycle_total / 3) + " instructions take 3 cycles to complete")
+    print(str(four_cycle_total / 4) + " instructions take 4 cycles to complete")
+    print(str(five_cycle_total / 5) + " instructions take 5 cycles to complete")
+    print('\nDynamic Instr Count: ', _DIC)
+    print("\nCPI: " + str(three_cycle_total + four_cycle_total + five_cycle_total / int(_DIC)))
+    print('\nPC = ', _PC)
+    print('\nRegisters $0- $31 \n', _register)
+    print('\nMemory contents 0x2000 - 0x21fc ', _mem)
+    #cache(masterRN, blockSize, nWays, nSets, hitArr, numHit, numMiss)
+    if(numHit + numMiss != 0):
+        hr = numHit / (numHit + numMiss)
+        print("Overall hit rate ", hr)
+    print('\nPress enter to continue.......')
+    #input()
 
 
 def end_instruction_multi_cycle(stage):
