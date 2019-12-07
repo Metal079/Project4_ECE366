@@ -80,11 +80,15 @@ def tag(address, b, n, s, hitArr, numHit, numMiss, base):
     else:
         block = int(block)
     set = math.ceil(math.log(block, 2))
-    if(int(n) != 0):
+    if(int(n) != 0 and int(s) > int(n)):
         os = int(s) / int(n)
     else:
         os = int(s)
     offset = math.ceil(math.log(os, 2))
+    #print("set")
+    #print(set)
+    #print("offset")
+    #print(offset)
     tag = 32 - (set + offset)
     print("# of tag bits:")
     print(tag)
@@ -98,7 +102,7 @@ def hit(address, tag, set, offset, hitArr, numWays, numhit, numMiss, base):
     j = int(j)
     spot = 0
     tagS = ""
-    while i < tag:
+    while (i < tag and i < len(address)):
         tagS = tagS + address[i]
         i = i + 1
     #print(tagS)
